@@ -49,8 +49,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(errorHandler);
 
@@ -81,6 +79,15 @@ app.use((req, res, next) => {
     });
 });
 
+// Add this before the static files middleware
+app.use("/uploads", function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
+// Your existing static files middleware
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Main API routes with /api prefix
