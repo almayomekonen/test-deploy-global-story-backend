@@ -22,7 +22,11 @@ const limiter = new rateLimit.RateLimiterMemory({
   duration: 60,
 });
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 const allowedOrigins = [
   "https://test-deploy-global-story-m2t1r76a8-miel-team.vercel.app",
@@ -43,8 +47,11 @@ const corsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
@@ -79,15 +86,15 @@ app.use((req, res, next) => {
     });
 });
 
-// Add this before the static files middleware
-app.use("/uploads", function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
   next();
 });
 
-// Your existing static files middleware
+// Keep your existing static file middleware
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Main API routes with /api prefix
