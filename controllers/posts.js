@@ -4,7 +4,14 @@ const User = require("../models/User");
 exports.createPost = async (req, res) => {
   try {
     const { title, content, category, language } = req.body;
-    const images = req.files ? req.files.map((file) => file.filename) : [];
+    const images = req.files
+      ? req.files.map(
+          (file) =>
+            `${req.protocol}://${req.get("host")}/uploads/posts/${
+              file.filename
+            }`
+        )
+      : [];
 
     const post = await Post.create({
       user: req.user.id,

@@ -128,7 +128,10 @@ exports.uploadImageProfile = async (req, res) => {
       res.status(404).json({ message: "User not found" });
     }
 
-    user.profileImage = req.file.filename;
+    user.profileImage = `${req.protocol}://${req.get(
+      "host"
+    )}/uploads/profiles/${req.file.filename}`;
+
     await user.save();
 
     res.status(200).json({
