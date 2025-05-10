@@ -25,7 +25,7 @@ const limiter = new rateLimit.RateLimiterMemory({
 app.use(helmet());
 
 const allowedOrigins = [
-  "https://test-deploy-global-story-jrsk8iwt2-miel-team.vercel.app",
+  "https://test-deploy-global-story-46cdjpcg4-miel-team.vercel.app",
   "https://test-deploy-global-story.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
