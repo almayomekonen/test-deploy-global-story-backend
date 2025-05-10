@@ -120,12 +120,12 @@ exports.getCurrentUser = async (req, res) => {
 exports.uploadImageProfile = async (req, res) => {
   try {
     if (!req.file) {
-      res.status(400).json({ message: "Image not uploaded correctly" });
+      return res.status(400).json({ message: "Image not uploaded correctly" });
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     user.profileImage = `${req.protocol}://${req.get(
