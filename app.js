@@ -24,15 +24,30 @@ const limiter = new rateLimit.RateLimiterMemory({
 
 app.use(helmet());
 
-// Configure CORS for production
+const allowedOrigins = [
+  "https://test-deploy-global-story-jm22szwpw-miel-team.vercel.app",
+  "https://test-deploy-global-story.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
 const corsOptions = {
-  origin:
-    process.env.NODE_ENV === "production"
-      ? process.env.FRONTEND_URL || "http://localhost:5173"
-      : "*",
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
+
 app.use(cors(corsOptions));
 
 app.use(express.json());
@@ -67,9 +82,14 @@ app.use((req, res, next) => {
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Main API routes with /api prefix
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api", mapRoutes);
+
+// Also support routes without /api prefix for flexibility
+app.use("/auth", authRoutes);
+app.use("/posts", postRoutes);
 
 app.get("/", (req, res) => {
   res.send("Global Stories API is running");
