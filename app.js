@@ -25,7 +25,7 @@ const limiter = new rateLimit.RateLimiterMemory({
 app.use(helmet());
 
 const allowedOrigins = [
-  "https://test-deploy-global-story-jm22szwpw-miel-team.vercel.app",
+  "https://test-deploy-global-story-jrsk8iwt2-miel-team.vercel.app",
   "https://test-deploy-global-story.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
@@ -33,10 +33,9 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
     if (
-      allowedOrigins.indexOf(origin) !== -1 ||
+      !origin ||
+      allowedOrigins.includes(origin) ||
       process.env.NODE_ENV !== "production"
     ) {
       callback(null, true);
@@ -47,6 +46,8 @@ const corsOptions = {
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
 };
+
+app.use(cors(corsOptions));
 
 app.use(cors(corsOptions));
 
