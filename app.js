@@ -29,7 +29,7 @@ app.use(
 );
 
 const allowedOrigins = [
-  "https://test-deploy-global-story-m2t1r76a8-miel-team.vercel.app",
+  "https://test-deploy-global-story-4bbkfhutm-miel-team.vercel.app/",
   "https://test-deploy-global-story.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
