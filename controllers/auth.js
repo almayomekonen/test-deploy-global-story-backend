@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const bcrypt = require("bcrypt");
+const { getS3Url } = require("../config/s3-config");
 
 function generateToken(id) {
   return jwt.sign({ id }, process.env.JWT_SECRET_KEY, {
@@ -43,7 +44,7 @@ exports.register = async (req, res) => {
         city: user.city,
         bio: user.bio,
         languages: user.languages,
-        profileImage: user.profileImage,
+        profileImage: null, // New user has no profile image yet
         role: user.role,
       },
     });
@@ -68,6 +69,11 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    // Get S3 URL for profile image if it exists
+    const profileImageUrl = user.profileImage
+      ? getS3Url(user.profileImage)
+      : null;
+
     res.status(201).json({
       success: true,
       token,
@@ -79,7 +85,7 @@ exports.login = async (req, res) => {
         city: user.city,
         bio: user.bio,
         languages: user.languages,
-        profileImage: user.profileImage,
+        profileImage: profileImageUrl,
         role: user.role,
       },
     });
@@ -97,6 +103,11 @@ exports.getCurrentUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Get S3 URL for profile image if it exists
+    const profileImageUrl = user.profileImage
+      ? getS3Url(user.profileImage)
+      : null;
+
     res.status(200).json({
       success: true,
       user: {
@@ -106,7 +117,7 @@ exports.getCurrentUser = async (req, res) => {
         country: user.country,
         city: user.city,
         bio: user.bio,
-        profileImage: user.profileImage,
+        profileImage: profileImageUrl,
         languages: user.languages,
         role: user.role,
       },
@@ -128,13 +139,22 @@ exports.uploadImageProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.profileImage = req.file.filename;
+    if (user.profileImage) {
+      try {
+        await deleteFileFromS3(user.profileImage);
+      } catch (s3Error) {
+        console.error("Error deleting old profile image from S3:", s3Error);
+      }
+    }
 
+    user.profileImage = req.file.key;
     await user.save();
+
+    const profileImageUrl = getS3Url(user.profileImage);
 
     res.status(200).json({
       success: true,
-      profileImage: user.profileImage,
+      profileImage: profileImageUrl,
       message: "Profile image updated successfully",
     });
   } catch (error) {
@@ -162,64 +182,5 @@ exports.getUserStats = async (req, res) => {
   } catch (error) {
     console.error("Error getting user stats :", error);
     res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-exports.getMapData = async (req, res) => {
-  try {
-    const usersByCountry = await User.aggregate([
-      {
-        $match: {
-          country: { $ne: null, $ne: "" },
-        },
-      },
-
-      {
-        $group: {
-          _id: "$country",
-          count: { $sum: 1 },
-
-          userIds: { $push: "$_id" },
-        },
-      },
-
-      {
-        $sort: { count: -1 },
-      },
-
-      {
-        $project: {
-          name: "$_id",
-          count: 1,
-          userIds: 1,
-          _id: 0,
-        },
-      },
-    ]);
-
-    const results = await Promise.all(
-      usersByCountry.map(async (country) => {
-        const post = await Post.findOne({
-          user: { $in: country.userIds },
-        }).sort({ createdAt: -1 });
-
-        return {
-          name: country.name,
-          count: country.count,
-          postId: post ? post._id : null,
-        };
-      })
-    );
-
-    return res.json({
-      success: true,
-      countries: results,
-    });
-  } catch (err) {
-    console.error("Error fetching country data:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
   }
 };

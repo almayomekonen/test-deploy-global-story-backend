@@ -1,5 +1,6 @@
+// In mapRoutes.js
 const express = require("express");
-const { getMapData } = require("../controllers/auth");
+const { getMapData } = require("../controllers/map");
 
 const router = express.Router();
 

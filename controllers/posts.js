@@ -1,10 +1,13 @@
 const Post = require("../models/Post");
 const User = require("../models/User");
+const { getS3Url } = require("../config/s3-config");
 
 exports.createPost = async (req, res) => {
   try {
     const { title, content, category, language } = req.body;
-    const images = req.files ? req.files.map((file) => file.filename) : [];
+
+    // S3 uploads include the full file path in req.files.key
+    const images = req.files ? req.files.map((file) => file.key) : [];
 
     const post = await Post.create({
       user: req.user.id,
@@ -20,9 +23,20 @@ exports.createPost = async (req, res) => {
       select: "name profileImage country",
     });
 
+    // Transform the response to include full image URLs
+    const responsePost = populatePost.toObject();
+
+    // Transform image paths to full S3 URLs
+    responsePost.images = responsePost.images.map((image) => getS3Url(image));
+
+    // Transform user profile image to full S3 URL if exists
+    if (responsePost.user && responsePost.user.profileImage) {
+      responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
+    }
+
     res.status(201).json({
       success: true,
-      data: populatePost,
+      data: responsePost,
     });
   } catch (error) {
     console.error("Create Post Failed: ", error);
@@ -47,11 +61,26 @@ exports.getAllPosts = async (req, res) => {
 
     const totalPosts = await Post.countDocuments();
 
+    // Transform the response to include full image URLs
+    const responsePosts = posts.map((post) => {
+      const postObj = post.toObject();
+
+      // Transform image paths to full S3 URLs
+      postObj.images = postObj.images.map((image) => getS3Url(image));
+
+      // Transform user profile image to full S3 URL if exists
+      if (postObj.user && postObj.user.profileImage) {
+        postObj.user.profileImage = getS3Url(postObj.user.profileImage);
+      }
+
+      return postObj;
+    });
+
     res.status(200).json({
       success: true,
       count: posts.length,
       total: totalPosts,
-      data: posts,
+      data: responsePosts,
     });
   } catch (error) {
     console.error("failed to Get Posts : ", error);
@@ -69,10 +98,25 @@ exports.getPostsByCategory = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    // Transform the response to include full image URLs
+    const responsePosts = posts.map((post) => {
+      const postObj = post.toObject();
+
+      // Transform image paths to full S3 URLs
+      postObj.images = postObj.images.map((image) => getS3Url(image));
+
+      // Transform user profile image to full S3 URL if exists
+      if (postObj.user && postObj.user.profileImage) {
+        postObj.user.profileImage = getS3Url(postObj.user.profileImage);
+      }
+
+      return postObj;
+    });
+
     res.status(200).json({
       success: true,
       count: posts.length,
-      data: posts,
+      data: responsePosts,
     });
   } catch (error) {
     console.error("failed to Get Posts by catogory : ", error);
@@ -96,12 +140,33 @@ exports.getPostById = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    // Transform the response to include full image URLs
+    const responsePost = post.toObject();
+
+    // Transform image paths to full S3 URLs
+    responsePost.images = responsePost.images.map((image) => getS3Url(image));
+
+    // Transform user profile image to full S3 URL if exists
+    if (responsePost.user && responsePost.user.profileImage) {
+      responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
+    }
+
+    // Transform comment user profile images to full S3 URLs
+    if (responsePost.comments && responsePost.comments.length > 0) {
+      responsePost.comments = responsePost.comments.map((comment) => {
+        if (comment.user && comment.user.profileImage) {
+          comment.user.profileImage = getS3Url(comment.user.profileImage);
+        }
+        return comment;
+      });
+    }
+
     res.status(200).json({
       success: true,
-      data: post,
+      data: responsePost,
     });
   } catch (error) {
-    console.error("failed to Get Posts by catogory: ", error);
+    console.error("failed to Get Post by ID: ", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -116,10 +181,25 @@ exports.getUserPosts = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
+    // Transform the response to include full image URLs
+    const responsePosts = posts.map((post) => {
+      const postObj = post.toObject();
+
+      // Transform image paths to full S3 URLs
+      postObj.images = postObj.images.map((image) => getS3Url(image));
+
+      // Transform user profile image to full S3 URL if exists
+      if (postObj.user && postObj.user.profileImage) {
+        postObj.user.profileImage = getS3Url(postObj.user.profileImage);
+      }
+
+      return postObj;
+    });
+
     res.status(200).json({
       success: true,
       count: posts.length,
-      data: posts,
+      data: responsePosts,
     });
   } catch (error) {
     console.error("Get user Posts failed: ", error);
@@ -127,12 +207,15 @@ exports.getUserPosts = async (req, res) => {
   }
 };
 
+// Other methods continue with the same pattern...
+// I'll show the update and delete methods as examples
+
 exports.updatePost = async (req, res) => {
   try {
     let post = await Post.findById(req.params.id);
 
     if (!post) {
-      res.status(400).json({
+      return res.status(400).json({
         message: "Not authorized to update this post",
       });
     }
@@ -150,9 +233,20 @@ exports.updatePost = async (req, res) => {
       { new: true }
     ).populate({ path: "user", select: "name profileImage country" });
 
+    // Transform the response to include full image URLs
+    const responsePost = post.toObject();
+
+    // Transform image paths to full S3 URLs
+    responsePost.images = responsePost.images.map((image) => getS3Url(image));
+
+    // Transform user profile image to full S3 URL if exists
+    if (responsePost.user && responsePost.user.profileImage) {
+      responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
+    }
+
     res.status(200).json({
       success: true,
-      data: post,
+      data: responsePost,
     });
   } catch (error) {
     console.error("Update post error: ", error);
@@ -165,15 +259,23 @@ exports.deletePost = async (req, res) => {
     const post = await Post.findById(req.params.id);
 
     if (!post) {
-      res.status(404).json({
+      return res.status(404).json({
         message: "Post not found",
       });
     }
 
-    if (post.user.toString() !== req.user.id) {
+    if (post.user.toString() !== req.user.id && req.user.role !== "admin") {
       return res
         .status(401)
         .json({ message: "Not authorized to delete this post" });
+    }
+
+    if (post.images && post.images.length > 0) {
+      try {
+        await deleteFilesFromS3(post.images);
+      } catch (s3Error) {
+        console.error("Error deleting images from S3:", s3Error);
+      }
     }
 
     await post.deleteOne();

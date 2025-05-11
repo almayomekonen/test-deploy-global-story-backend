@@ -1,9 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require("dotenv");
-const path = require("path");
-const fs = require("fs");
+require("dotenv").config();
 const helmet = require("helmet");
 const rateLimit = require("rate-limiter-flexible");
 const errorHandler = require("./middleware/errorHandler");
@@ -11,8 +9,6 @@ const errorHandler = require("./middleware/errorHandler");
 const authRoutes = require("./router/user-routes");
 const postRoutes = require("./router/post-routes");
 const mapRoutes = require("./router/mapRoutes");
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -55,25 +51,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(errorHandler);
-
-const uploadsDir = path.join(__dirname, "uploads");
-const profilesDir = path.join(uploadsDir, "profiles");
-const postsDir = path.join(uploadsDir, "posts");
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-
-if (!fs.existsSync(profilesDir)) {
-  fs.mkdirSync(profilesDir);
-}
-
-if (!fs.existsSync(postsDir)) {
-  fs.mkdirSync(postsDir);
-}
 
 app.use((req, res, next) => {
   limiter
@@ -86,23 +65,10 @@ app.use((req, res, next) => {
     });
 });
 
-app.use("/uploads", (req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-
-  next();
-});
-
-// Keep your existing static file middleware
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Main API routes with /api prefix
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api", mapRoutes);
 
-// Also support routes without /api prefix for flexibility
 app.use("/auth", authRoutes);
 app.use("/posts", postRoutes);
 
@@ -114,8 +80,6 @@ mongoose
   .connect(
     `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.26zhx4l.mongodb.net/${process.env.DB_NAME}`,
     {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       retryWrites: true,
     }
