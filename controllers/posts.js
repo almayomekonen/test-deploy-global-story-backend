@@ -1,6 +1,7 @@
 const Post = require("../models/Post");
 const User = require("../models/User");
 const { getS3Url } = require("../config/s3-config");
+const { deleteFilesFromS3 } = require("../config/S3-helper-functions");
 
 exports.createPost = async (req, res) => {
   try {
@@ -207,9 +208,6 @@ exports.getUserPosts = async (req, res) => {
   }
 };
 
-// Other methods continue with the same pattern...
-// I'll show the update and delete methods as examples
-
 exports.updatePost = async (req, res) => {
   try {
     let post = await Post.findById(req.params.id);
@@ -233,13 +231,10 @@ exports.updatePost = async (req, res) => {
       { new: true }
     ).populate({ path: "user", select: "name profileImage country" });
 
-    // Transform the response to include full image URLs
     const responsePost = post.toObject();
 
-    // Transform image paths to full S3 URLs
     responsePost.images = responsePost.images.map((image) => getS3Url(image));
 
-    // Transform user profile image to full S3 URL if exists
     if (responsePost.user && responsePost.user.profileImage) {
       responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
     }

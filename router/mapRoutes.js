@@ -1,4 +1,3 @@
-// In mapRoutes.js
 const express = require("express");
 const { getMapData } = require("../controllers/map");
 
