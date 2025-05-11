@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 const performanceMiddleware = applyPerformanceMiddleware(app);
 
 const allowedOrigins = [
-  "https://test-deploy-global-story-a01l5nsse-miel-team.vercel.app/",
+  "https://test-deploy-global-story-3fli5lq4d-miel-team.vercel.app/",
   "https://test-deploy-global-story.vercel.app",
   "http://localhost:5173",
   "http://localhost:3000",
