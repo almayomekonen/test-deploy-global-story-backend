@@ -1,14 +1,15 @@
 const Post = require("../models/Post");
 const User = require("../models/User");
-const { getS3Url } = require("../config/s3-config");
+const { getS3Url, getResponsiveImageUrl } = require("../config/s3-config");
 const { deleteFilesFromS3 } = require("../config/S3-helper-functions");
 
 exports.createPost = async (req, res) => {
   try {
     const { title, content, category, language } = req.body;
 
-    // S3 uploads include the full file path in req.files.key
-    const images = req.files ? req.files.map((file) => file.key) : [];
+    const images =
+      req.processedImages ||
+      (req.files ? req.files.map((file) => file.key) : []);
 
     const post = await Post.create({
       user: req.user.id,
@@ -24,13 +25,13 @@ exports.createPost = async (req, res) => {
       select: "name profileImage country",
     });
 
-    // Transform the response to include full image URLs
     const responsePost = populatePost.toObject();
 
-    // Transform image paths to full S3 URLs
-    responsePost.images = responsePost.images.map((image) => getS3Url(image));
+    responsePost.images = responsePost.images.map((image) => {
+      const imageUrls = getResponsiveImageUrl(image);
+      return imageUrls ? imageUrls : getS3Url(image);
+    });
 
-    // Transform user profile image to full S3 URL if exists
     if (responsePost.user && responsePost.user.profileImage) {
       responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
     }
@@ -58,23 +59,24 @@ exports.getAllPosts = async (req, res) => {
       })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const totalPosts = await Post.countDocuments();
 
-    // Transform the response to include full image URLs
     const responsePosts = posts.map((post) => {
-      const postObj = post.toObject();
+      post.images = post.images.map((image) => {
+        if (typeof image === "string") {
+          return getS3Url(image);
+        }
+        return getS3Url(image);
+      });
 
-      // Transform image paths to full S3 URLs
-      postObj.images = postObj.images.map((image) => getS3Url(image));
-
-      // Transform user profile image to full S3 URL if exists
-      if (postObj.user && postObj.user.profileImage) {
-        postObj.user.profileImage = getS3Url(postObj.user.profileImage);
+      if (post.user && post.user.profileImage) {
+        post.user.profileImage = getS3Url(post.user.profileImage);
       }
 
-      return postObj;
+      return post;
     });
 
     res.status(200).json({
@@ -99,14 +101,11 @@ exports.getPostsByCategory = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    // Transform the response to include full image URLs
     const responsePosts = posts.map((post) => {
       const postObj = post.toObject();
 
-      // Transform image paths to full S3 URLs
       postObj.images = postObj.images.map((image) => getS3Url(image));
 
-      // Transform user profile image to full S3 URL if exists
       if (postObj.user && postObj.user.profileImage) {
         postObj.user.profileImage = getS3Url(postObj.user.profileImage);
       }
@@ -135,26 +134,26 @@ exports.getPostById = async (req, res) => {
       .populate({
         path: "comments.user",
         select: "name profileImage",
-      });
+      })
+      .lean();
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    // Transform the response to include full image URLs
-    const responsePost = post.toObject();
+    post.images = post.images.map((image) => {
+      if (typeof image === "string") {
+        return getS3Url(image);
+      }
+      return getS3Url(image);
+    });
 
-    // Transform image paths to full S3 URLs
-    responsePost.images = responsePost.images.map((image) => getS3Url(image));
-
-    // Transform user profile image to full S3 URL if exists
-    if (responsePost.user && responsePost.user.profileImage) {
-      responsePost.user.profileImage = getS3Url(responsePost.user.profileImage);
+    if (post.user && post.user.profileImage) {
+      post.user.profileImage = getS3Url(post.user.profileImage);
     }
 
-    // Transform comment user profile images to full S3 URLs
-    if (responsePost.comments && responsePost.comments.length > 0) {
-      responsePost.comments = responsePost.comments.map((comment) => {
+    if (post.comments && post.comments.length > 0) {
+      post.comments = post.comments.map((comment) => {
         if (comment.user && comment.user.profileImage) {
           comment.user.profileImage = getS3Url(comment.user.profileImage);
         }
@@ -164,7 +163,7 @@ exports.getPostById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: responsePost,
+      data: post,
     });
   } catch (error) {
     console.error("failed to Get Post by ID: ", error);
@@ -182,14 +181,11 @@ exports.getUserPosts = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    // Transform the response to include full image URLs
     const responsePosts = posts.map((post) => {
       const postObj = post.toObject();
 
-      // Transform image paths to full S3 URLs
       postObj.images = postObj.images.map((image) => getS3Url(image));
 
-      // Transform user profile image to full S3 URL if exists
       if (postObj.user && postObj.user.profileImage) {
         postObj.user.profileImage = getS3Url(postObj.user.profileImage);
       }

@@ -6,7 +6,8 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "build": "echo 'Backend build complete'",
-    "setup-s3": "node scripts/setup-s3-bucket.js"
+    "setup-s3": "node scripts/setup-s3-bucket.js",
+    "create-indexes": "node scripts/create-indexes.js"
   },
   "keywords": [],
   "author": "",
