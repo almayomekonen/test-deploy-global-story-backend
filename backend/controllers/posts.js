@@ -209,8 +209,8 @@ exports.updatePost = async (req, res) => {
     let post = await Post.findById(req.params.id);
 
     if (!post) {
-      return res.status(400).json({
-        message: "Not authorized to update this post",
+      return res.status(404).json({
+        message: "Post not found",
       });
     }
 
